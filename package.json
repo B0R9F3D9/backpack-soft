@@ -1,0 +1,31 @@
+{
+	"name": "backpack-soft",
+	"module": "index.ts",
+	"type": "module",
+	"scripts": {
+		"start": "bun run src/index.ts",
+		"dev": "nodemon --exec \"bun run src/index.ts\" --ext ts",
+		"format": "prettier --write \"**/*.{js,jsx,ts,tsx}\"",
+		"lint": "eslint src --ext ts"
+	},
+	"devDependencies": {
+		"@eslint/js": "^9.21.0",
+		"@trivago/prettier-plugin-sort-imports": "^5.2.2",
+		"@types/bun": "^1.2.2",
+		"eslint": "^9.21.0",
+		"globals": "^16.0.0",
+		"nodemon": "^3.1.9",
+		"prettier": "^3.5.1",
+		"typescript-eslint": "^8.26.0"
+	},
+	"peerDependencies": {
+		"typescript": "^5.7.3"
+	},
+	"dependencies": {
+		"@noble/curves": "^1.8.1",
+		"@scure/base": "^1.2.4",
+		"axios": "^1.8.1",
+		"chalk": "^5.4.1",
+		"dotenv": "^16.4.7"
+	}
+}
