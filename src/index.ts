@@ -84,7 +84,7 @@ const tradingLoop = async (
 		askBalance = await executeTrade(backpack, pair, side, quantity, price);
 		totalVolume += parseFloat(quantity);
 		console.log(
-			`${side === 'Bid' ? chalk.green(side) : chalk.red(side)} ${quantity} at ${price} | Total: ${formatCurrency(totalVolume)}`,
+			`💰 ${side === 'Bid' ? chalk.green(side) : chalk.red(side)} ${quantity} at ${price} | Total: ${formatCurrency(totalVolume)}`,
 		);
 		bidBalance *= 0.999;
 		side = side === 'Bid' ? 'Ask' : 'Bid';
@@ -99,7 +99,7 @@ const main = () => {
 	});
 	const backpack = new Backpack(BACKPACK_API_SECRET!);
 
-	rl.question('Enter pair(e.g. BTC_USDT): ', pair => {
+	rl.question('Enter pair (e.g. BTC_USDT): ', pair => {
 		pair = pair.toUpperCase();
 		rl.question('Enter initial balance: ', balance => {
 			rl.question(
