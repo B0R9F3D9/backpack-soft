@@ -61,7 +61,7 @@ const executeTrade = async (
 		price,
 	});
 	if (order.status === 'Filled') return order.quantity!;
-	console.error(order);
+	console.debug(order);
 	throw new Error('Order not filled');
 };
 
@@ -76,7 +76,7 @@ const tradingLoop = async (
 	let totalVolume = 0;
 	let side: 'Ask' | 'Bid' = 'Bid';
 
-	while (true) {
+	for (let i = 1; i <= Infinity; i++) {
 		const depth = await backpack.getDepth(pair);
 		const price = getPriceFromDepth(depth, side);
 		const quantity =
@@ -84,11 +84,12 @@ const tradingLoop = async (
 		askBalance = await executeTrade(backpack, pair, side, quantity, price);
 		totalVolume += parseFloat(quantity);
 		console.log(
-			`💰 ${side === 'Bid' ? chalk.green(side) : chalk.red(side)} ${quantity} at ${price} | Total: ${formatCurrency(totalVolume)}`,
+			`💰 #${i} ${side === 'Bid' ? chalk.green(side) : chalk.red(side)} ${quantity} at ${price} | Volume: ${formatCurrency(totalVolume)}`,
 		);
 		bidBalance *= 0.999;
 		side = side === 'Bid' ? 'Ask' : 'Bid';
-		await sleep(getRandomSleep(level));
+		const sleepTime = getRandomSleep(level);
+		if (sleepTime) await sleep(sleepTime);
 	}
 };
 
@@ -105,7 +106,7 @@ const main = () => {
 			rl.question(
 				'Select randomization level (0-10, 0=none, 1=low, 10=high): ',
 				(level: string | number) => {
-					level = Math.max(1, Math.min(10, parseInt(level as string) || 1));
+					level = Math.max(0, Math.min(10, parseInt(level as string) || 0));
 					rl.close();
 					tradingLoop(backpack, pair, parseFloat(balance), level);
 				},
