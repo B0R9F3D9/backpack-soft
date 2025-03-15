@@ -44,33 +44,12 @@ const getPriceFromDepth = (depth: Depth, side: 'Ask' | 'Bid') =>
 				.map(i => i[0])
 				.sort((a, b) => parseFloat(a) - parseFloat(b))[0];
 
-const executeTrade = async (
-	backpack: Backpack,
-	pair: string,
-	side: 'Bid' | 'Ask',
-	quantity: string,
-	price: string,
-) => {
-	const order = await backpack.executeOrder('Limit', side, pair, {
-		autoBorrow: false,
-		autoBorrowRepay: false,
-		autoLend: false,
-		autoLendRedeem: true,
-		postOnly: false,
-		quantity,
-		price,
-	});
-	if (order.status === 'Filled') return order.quantity!;
-	console.debug(order);
-	throw new Error('Order not filled');
-};
-
-const tradingLoop = async (
+async function tradingLoop(
 	backpack: Backpack,
 	pair: string,
 	initialBalance: number,
 	level: number,
-) => {
+) {
 	let bidBalance = initialBalance;
 	let askBalance = '';
 	let totalVolume = 0;
@@ -81,38 +60,57 @@ const tradingLoop = async (
 		const price = getPriceFromDepth(depth, side);
 		const quantity =
 			side === 'Bid' ? getRandomQuantity(bidBalance, level) : askBalance;
-		askBalance = await executeTrade(backpack, pair, side, quantity, price);
+
+		const order = await backpack.executeOrder('Limit', side, pair, {
+			autoBorrow: false,
+			autoBorrowRepay: false,
+			autoLend: false,
+			autoLendRedeem: true,
+			postOnly: false,
+			quantity,
+			price,
+		});
+		if (order.status === 'Filled') askBalance = order.quantity!;
+		else {
+			console.warn(`❌ #${i} Order not filled, canceling...`);
+			await backpack.cancelOrder(order.symbol, order.id!);
+			continue;
+		}
+
 		totalVolume += parseFloat(quantity);
+		const coloredSide = side === 'Bid' ? chalk.green(side) : chalk.red(side);
 		console.log(
-			`💰 #${i} ${side === 'Bid' ? chalk.green(side) : chalk.red(side)} ${quantity} at ${price} | Volume: ${formatCurrency(totalVolume)}`,
+			`💰 #${i} ${coloredSide} ${quantity} at ${price}`,
+			'|',
+			`🤑Total volume: ${formatCurrency(totalVolume)}`,
 		);
 		bidBalance *= 0.999;
 		side = side === 'Bid' ? 'Ask' : 'Bid';
 		const sleepTime = getRandomSleep(level);
 		if (sleepTime) await sleep(sleepTime);
 	}
-};
+}
 
-const main = () => {
+async function main() {
 	const rl = readline.createInterface({
 		input: process.stdin,
 		output: process.stdout,
 	});
 	const backpack = new Backpack(BACKPACK_API_SECRET!);
 
-	rl.question('Enter pair (e.g. BTC_USDT): ', pair => {
-		pair = pair.toUpperCase();
+	rl.question('Enter token (e.g. BTC): ', token => {
+		token = token.toUpperCase() + '_USDC';
 		rl.question('Enter initial balance: ', balance => {
 			rl.question(
 				'Select randomization level (0-10, 0=none, 1=low, 10=high): ',
 				(level: string | number) => {
 					level = Math.max(0, Math.min(10, parseInt(level as string) || 0));
 					rl.close();
-					tradingLoop(backpack, pair, parseFloat(balance), level);
+					tradingLoop(backpack, token, parseFloat(balance), level);
 				},
 			);
 		});
 	});
-};
+}
 
 main();

@@ -91,7 +91,14 @@ export default class Backpack extends BaseClient {
 		const params: RequestParams = { instruction };
 
 		if (Object.keys(body).length > 0) {
-			Object.assign(params, Object.fromEntries(Object.entries(body).sort()));
+			Object.assign(
+				params,
+				Object.fromEntries(
+					Object.entries(body)
+						.filter(([_, v]) => v !== undefined)
+						.sort(),
+				),
+			);
 		}
 
 		params.timestamp = timestamp;
@@ -108,14 +115,13 @@ export default class Backpack extends BaseClient {
 			'X-API-KEY': this.publicKeyB64,
 			'X-TIMESTAMP': timestamp,
 			'X-WINDOW': window,
-			'Content-Type': 'application/json',
 			'X-SIGNATURE': signatureB64,
 		} as Headers;
 	}
 
 	private async makeAuthRequest<T>(
-		method: 'get' | 'post' | 'delete',
-		uri: string,
+		method: 'GET' | 'POST' | 'DELETE',
+		endpoint: string,
 		instruction: string,
 		paramsOrData: RequestParams = {},
 	): Promise<T> {
@@ -123,17 +129,17 @@ export default class Backpack extends BaseClient {
 			const headers = this.signRequest(instruction, paramsOrData);
 			let response: AxiosResponse<T>;
 
-			if (method === 'get') {
-				response = await this.axiosInstance.get<T>(uri, {
+			if (method === 'GET') {
+				response = await this.axiosInstance.get<T>(endpoint, {
 					headers,
 					params: paramsOrData,
 				});
-			} else if (method === 'post') {
-				response = await this.axiosInstance.post<T>(uri, paramsOrData, {
+			} else if (method === 'POST') {
+				response = await this.axiosInstance.post<T>(endpoint, paramsOrData, {
 					headers,
 				});
-			} else if (method === 'delete') {
-				response = await this.axiosInstance.delete<T>(uri, {
+			} else if (method === 'DELETE') {
+				response = await this.axiosInstance.delete<T>(endpoint, {
 					headers,
 					data: paramsOrData,
 				});
@@ -158,7 +164,7 @@ export default class Backpack extends BaseClient {
 
 	async getBalances() {
 		return this.makeAuthRequest<Balances>(
-			'get',
+			'GET',
 			'/api/v1/capital',
 			'balanceQuery',
 		);
@@ -176,7 +182,7 @@ export default class Backpack extends BaseClient {
 		offset = 0,
 	) {
 		return this.makeAuthRequest<FillHistory[]>(
-			'get',
+			'GET',
 			'/wapi/v1/history/fills',
 			'fillHistoryQueryAll',
 			{ marketType, limit, offset },
@@ -185,7 +191,7 @@ export default class Backpack extends BaseClient {
 
 	async getBorrowLendPositions() {
 		return this.makeAuthRequest<BorrowLendPosition[]>(
-			'get',
+			'GET',
 			'/api/v1/borrowLend/positions',
 			'borrowLendPositionQuery',
 		);
@@ -197,7 +203,7 @@ export default class Backpack extends BaseClient {
 		symbol: Token,
 	) {
 		return this.makeAuthRequest<void>(
-			'post',
+			'POST',
 			'/api/v1/borrowLend',
 			'borrowLendExecute',
 			{
@@ -210,10 +216,22 @@ export default class Backpack extends BaseClient {
 
 	async getOpenOrders(symbol?: string, marketType?: 'SPOT' | 'PERP') {
 		return this.makeAuthRequest<OpenedLimitOrder[] | OpenedMarketOrder[]>(
-			'get',
+			'GET',
 			'/api/v1/orders',
 			'orderQueryAll',
-			symbol || marketType ? { symbol, marketType } : {},
+			{ symbol, marketType },
+		);
+	}
+
+	async cancelOrder(symbol: string, orderId?: string, clientId?: number) {
+		if (orderId && clientId)
+			throw new Error('Only one of orderId or clientId can be specified');
+
+		return this.makeAuthRequest<OpenedLimitOrder | OpenedMarketOrder>(
+			'DELETE',
+			'/api/v1/order',
+			'orderCancel',
+			{ symbol, orderId, clientId },
 		);
 	}
 
@@ -239,7 +257,7 @@ export default class Backpack extends BaseClient {
 		},
 	) {
 		return this.makeAuthRequest<OpenedLimitOrder | OpenedMarketOrder>(
-			'post',
+			'POST',
 			'/api/v1/order',
 			'orderExecute',
 			{ orderType, side, symbol, ...options },
@@ -248,7 +266,7 @@ export default class Backpack extends BaseClient {
 
 	async getRewards(status: string = 'claimed', limit = 100, offset = 0) {
 		return this.makeAuthRequest(
-			'get',
+			'GET',
 			'/wapi/v1/user/rewards',
 			'userRewardsQuery',
 			{ status, limit, offset },
